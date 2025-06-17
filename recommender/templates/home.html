@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MoodMate 🎧🎬</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card:hover {
+            transform: scale(1.02);
+            transition: all 0.3s ease;
+        }
+        .ratio iframe {
+            border-radius: 8px;
+        }
+        .form-section {
+            max-width: 600px;
+            margin: auto;
+        }
+        input::placeholder {
+            color: #888;
+            font-style: italic;
+        }
+        .input-group-text {
+            font-size: 1.5rem;
+        }
+        .mood-btn {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .mood-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+        .text-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
+    <div class="container-fluid">
+        <a class="navbar-brand fs-3 fw-bold text-info" href="/">🎯 MoodMate</a>
+        <div class="d-flex">
+            {% if user.is_authenticated %}
+                <span class="navbar-text me-3">👋 Hello, {{ user.username|title }}</span>
+                <a href="{% url 'logout' %}" class="btn btn-outline-info btn-sm">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">Login</a>
+                <a href="{% url 'register' %}" class="btn btn-outline-light btn-sm">Register</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Mood Detection Input Box -->
+    <div class="form-section mb-5">
+        <form method="GET" action="" class="text-center">
+            <div class="input-group input-group-lg shadow rounded-pill overflow-hidden">
+                <span class="input-group-text bg-info text-white border-0">🧠</span>
+                <input type="text" name="feeling_text" class="form-control border-0" placeholder="Type how you feel like 'I feel relaxed'..." required>
+                <button type="submit" class="btn btn-info text-white px-4">Detect</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Flash Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-info text-center">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if selected_mood %}
+        <div class="alert alert-info text-center">
+            You selected: <strong>{{ selected_mood|title }}</strong> mood 💡
+        </div>
+    {% endif %}
+
+    <!-- Mood Buttons -->
+    <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
+        <a href="/?mood=happy" class="mood-btn btn btn-warning btn-lg rounded-pill px-4">😊 Happy</a>
+        <a href="/?mood=sad" class="mood-btn btn btn-primary btn-lg rounded-pill px-4">😢 Sad</a>
+        <a href="/?mood=angry" class="mood-btn btn btn-danger btn-lg rounded-pill px-4">😠 Angry</a>
+        <a href="/?mood=chill" class="mood-btn btn btn-success btn-lg rounded-pill px-4">😌 Chill</a>
+    </div>
+
+    <!-- Scroll to Recommendations Button -->
+    <div class="text-center mb-5">
+        <button id="scroll-btn" class="btn btn-outline-info btn-lg" style="display: none;">
+            ⬇️ See Recommendations
+        </button>
+    </div>
+
+    <!-- Recommendations -->
+    {% if recommendations %}
+    <div class="row justify-content-center" id="recommendations-section">
+
+        <!-- 🎬 Movie Section -->
+        <div class="col-12 mb-5">
+            <h3 class="text-warning mb-4 text-center">🎬 Movie Catalog</h3>
+            <div class="row">
+                {% for movie in recommendations.movies %}
+                    <div class="col-md-4 col-lg-3 mb-4">
+                        <div class="card bg-light text-dark h-100 shadow-sm">
+                            {% if movie.poster %}
+                                <img src="{{ movie.poster }}" class="card-img-top" alt="{{ movie.title }}">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title text-truncate">
+                                    <a href="{{ movie.url }}" target="_blank" class="text-dark text-decoration-none" title="{{ movie.title }}">
+                                        {{ movie.title }}
+                                    </a>
+                                </h5>
+                                <p class="card-text">
+                                    ⭐ Rating: {{ movie.rating }}<br>
+                                    📅 Year: {{ movie.release_year }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 🎵 Music Section -->
+        <div class="col-md-10 mb-4">
+            <h3 class="text-success mb-3 text-center">🎵 Music Suggestions</h3>
+            <div class="row">
+                {% for song in recommendations.music %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-light text-dark h-100 shadow-sm p-2">
+                            <h5 class="card-title text-truncate" title="{{ song.title }}">{{ song.title }}</h5>
+                            {% if song.youtube %}
+                                <div class="ratio ratio-16x9">
+                                    <iframe 
+                                        src="{{ song.youtube }}" 
+                                        frameborder="0" 
+                                        allowfullscreen 
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        class="rounded">
+                                    </iframe>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+</div>
+
+<!-- Scripts -->
+<script>
+    const form = document.querySelector('form');
+    const spinner = document.getElementById('loading-spinner');
+    form.addEventListener('submit', function () {
+        if (spinner) spinner.style.display = 'block';
+    });
+
+    const scrollBtn = document.getElementById('scroll-btn');
+    const recommendations = document.getElementById('recommendations-section');
+
+    if (recommendations && scrollBtn) {
+        scrollBtn.style.display = 'inline-block';
+        scrollBtn.addEventListener('click', () => {
+            recommendations.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+</script>
+
+</body>
+</html>
+
+
+
